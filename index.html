@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Donaciones - Inventario y Solicitudes</title>
+    <!-- Tailwind CSS para el diseño rápido y moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fuente Inter de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Iconos de FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Principal -->
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-500 text-white p-2.5 rounded-lg flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <i class="fa-solid fa-hand-holding-heart text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">DonarVida</h1>
+                    <p class="text-xs text-indigo-200">Inventario & Solicitud de Donaciones</p>
+                </div>
+            </div>
+            <!-- Notificaciones rápidas de stock o ayuda -->
+            <div class="flex items-center space-x-2">
+                <span class="text-xs bg-indigo-800 text-indigo-200 px-3 py-1.5 rounded-full font-medium hidden sm:inline-block">
+                    <i class="fa-solid fa-clock-rotate-left mr-1"></i> Sesión Temporal Activa
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Menú de Navegación por Pestañas / Tabs -->
+    <div class="bg-white border-b border-slate-200 sticky top-16 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="flex space-x-8 overflow-x-auto" aria-label="Tabs">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="border-b-2 border-indigo-600 text-indigo-600 py-4 px-1 font-semibold text-sm whitespace-nowrap transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard de Control</span>
+                </button>
+                <button onclick="switchTab('donations')" id="tab-donations" class="border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-4 px-1 font-medium text-sm whitespace-nowrap transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-plus"></i>
+                    <span>Ingresar Donación (Entrada)</span>
+                </button>
+                <button onclick="switchTab('requests')" id="tab-requests" class="border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-4 px-1 font-medium text-sm whitespace-nowrap transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-clipboard-question"></i>
+                    <span>Solicitar Donativo (Salida)</span>
+                </button>
+                <button onclick="switchTab('history')" id="tab-history" class="border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-4 px-1 font-medium text-sm whitespace-nowrap transition-all flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Historial de Movimientos</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal de Vistas -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Alertas personalizadas (Reemplaza a los molestos alert()) -->
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 max-w-md w-full pointer-events-none"></div>
+
+        <!-- VISTA 1: DASHBOARD -->
+        <div id="view-dashboard" class="space-y-8">
+            <!-- Tarjetas de Estadísticas Rápidas -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <i class="fa-solid fa-boxes-stacked text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-400">Total Artículos en Stock</p>
+                        <h3 id="stat-total-items" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i class="fa-solid fa-heart-circle-plus text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-400">Donaciones Recibidas</p>
+                        <h3 id="stat-total-donations" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl">
+                        <i class="fa-solid fa-circle-check text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-400">Solicitudes Entregadas</p>
+                        <h3 id="stat-total-requests" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3.5 bg-rose-50 text-rose-600 rounded-xl">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-400">Tipos sin Existencia</p>
+                        <h3 id="stat-out-of-stock" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Control de Inventario con Filtros -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Stock Actualizado en Tiempo Real</h2>
+                        <p class="text-sm text-slate-400">Consulta y busca entre todos los artículos de donación disponibles en el almacén.</p>
+                    </div>
+                    <!-- Filtros Rápidos -->
+                    <div class="flex flex-col sm:flex-row gap-2 max-w-xl w-full md:w-auto">
+                        <div class="relative flex-grow">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <input type="text" id="inventory-search" oninput="renderInventory()" placeholder="Buscar producto, categoría..." class="pl-10 pr-4 py-2 w-full text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        </div>
+                        <select id="inventory-filter-category" onchange="renderInventory()" class="px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="">Todas las Categorías</option>
+                            <option value="clothing">Ropa (Camisas/Pantalones)</option>
+                            <option value="shoes">Zapatos</option>
+                            <option value="medical">Artículos Médicos</option>
+                            <option value="hygiene">Higiene Personal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabla de Stock -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-4 px-6">Producto / Categoría</th>
+                                <th class="py-4 px-6">Tipo</th>
+                                <th class="py-4 px-6 text-center">Género / Demografía</th>
+                                <th class="py-4 px-6 text-center">Talla</th>
+                                <th class="py-4 px-6 text-right">Existencias</th>
+                                <th class="py-4 px-6 text-center">Estado de Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-slate-100 text-sm">
+                            <!-- Inyectado dinámicamente con JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 2: INGRESAR DONACIÓN (ENTRADA) -->
+        <div id="view-donations" class="hidden max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="bg-indigo-900 px-6 py-6 text-white flex items-center space-x-4">
+                    <div class="bg-white/10 p-3 rounded-xl">
+                        <i class="fa-solid fa-heart-circle-plus text-2xl text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold">Registrar Ingreso de Donación</h2>
+                        <p class="text-xs text-indigo-200">Ingresa las especificaciones del lote o artículo recibido para sumar existencias.</p>
+                    </div>
+                </div>
+
+                <form id="donation-form" onsubmit="handleDonationSubmit(event)" class="p-6 space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Nombre del Donante -->
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Nombre del Donante / Organización</label>
+                            <input type="text" id="donor-name" placeholder="Ej. Juan Pérez u Organización Solidaria (Opcional)" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                        </div>
+
+                        <!-- Tipo de Producto -->
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tipo de Artículo *</label>
+                            <select id="donation-type" onchange="updateSubfields('donation')" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                                <option value="" disabled selected>Selecciona tipo...</option>
+                                <option value="clothing">Ropa (Camisas/Pantalones)</option>
+                                <option value="shoes">Zapatos</option>
+                                <option value="medical">Artículos Médicos</option>
+                                <option value="hygiene">Artículos de Higiene</option>
+                            </select>
+                        </div>
+
+                        <!-- Categoría / Producto específico -->
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Categoría Específica *</label>
+                            <select id="donation-category" required disabled class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm disabled:opacity-50">
+                                <option value="" disabled selected>Selecciona tipo primero...</option>
+                            </select>
+                        </div>
+
+                        <!-- Género / Demografía -->
+                        <div id="div-donation-demo" class="hidden">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Género / Demografía *</label>
+                            <select id="donation-demo" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                                <option value="Unisex" selected>Unisex</option>
+                                <option value="Hombre">Hombre</option>
+                                <option value="Mujer">Mujer</option>
+                                <option value="Niños">Niños / Niñas</option>
+                            </select>
+                        </div>
+
+                        <!-- Talla dinámica -->
+                        <div id="div-donation-size" class="hidden">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Talla / Tamaño *</label>
+                            <select id="donation-size" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                                <!-- Llenado por JS -->
+                            </select>
+                        </div>
+
+                        <!-- Cantidad -->
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Cantidad Ingresada *</label>
+                            <input type="number" id="donation-qty" min="1" placeholder="Ej. 10" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                        <button type="button" onclick="resetForm('donation-form')" class="px-5 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition">Limpiar Campos</button>
+                        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/10 flex items-center space-x-2 transition">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>Registrar Entrada</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VISTA 3: SOLICITAR DONATIVO (SALIDA) -->
+        <div id="view-requests" class="hidden max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="bg-indigo-950 px-6 py-6 text-white flex items-center space-x-4">
+                    <div class="bg-white/10 p-3 rounded-xl">
+                        <i class="fa-solid fa-clipboard-question text-2xl text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold">Registrar Solicitud / Retiro</h2>
+                        <p class="text-xs text-indigo-200">Registra al beneficiario y descuenta los artículos del stock disponible en tiempo real.</p>
+                    </div>
+                </div>
+
+                <form id="request-form" onsubmit="handleRequestSubmit(event)" class="p-6 space-y-6">
+                    
+                    <!-- Sección: Datos del Beneficiario -->
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-4 border-b border-indigo-50 pb-2">Información del Beneficiario</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Nombre del Beneficiario *</label>
+                                <input type="text" id="req-first-name" placeholder="Ej. Carlos" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Apellido del Beneficiario *</label>
+                                <input type="text" id="req-last-name" placeholder="Ej. Mendoza" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                            </div>
+                            <div class="col-span-1 sm:col-span-2">
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Documento de Identidad / Cédula / DNI *</label>
+                                <input type="text" id="req-doc-id" placeholder="Ej. V-26.890.345 o similar" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Artículo Solicitado -->
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-4 border-b border-indigo-50 pb-2">Artículo Solicitado</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Tipo de Producto -->
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tipo de Artículo *</label>
+                                <select id="request-type" onchange="updateSubfields('request')" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                                    <option value="" disabled selected>Selecciona tipo...</option>
+                                    <option value="clothing">Ropa (Camisas/Pantalones)</option>
+                                    <option value="shoes">Zapatos</option>
+                                    <option value="medical">Artículos Médicos</option>
+                                    <option value="hygiene">Artículos de Higiene</option>
+                                </select>
+                            </div>
+
+                            <!-- Categoría / Producto específico -->
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Categoría Específica *</label>
+                                <select id="request-category" required disabled class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm disabled:opacity-50">
+                                    <option value="" disabled selected>Selecciona tipo primero...</option>
+                                </select>
+                            </div>
+
+                            <!-- Género / Demografía -->
+                            <div id="div-request-demo" class="hidden">
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Género / Demografía *</label>
+                                <select id="request-demo" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                                    <option value="Unisex" selected>Unisex</option>
+                                    <option value="Hombre">Hombre</option>
+                                    <option value="Mujer">Mujer</option>
+                                    <option value="Niños">Niños / Niñas</option>
+                                </select>
+                            </div>
+
+                            <!-- Talla dinámica -->
+                            <div id="div-request-size" class="hidden">
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Talla / Tamaño *</label>
+                                <select id="request-size" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                                    <!-- Llenado por JS -->
+                                </select>
+                            </div>
+
+                            <!-- Cantidad -->
+                            <div class="col-span-1 sm:col-span-2">
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Cantidad Necesaria *</label>
+                                <input type="number" id="request-qty" min="1" placeholder="Ej. 1" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                        <button type="button" onclick="resetForm('request-form')" class="px-5 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition">Limpiar Campos</button>
+                        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/10 flex items-center space-x-2 transition">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            <span>Procesar Solicitud</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VISTA 4: HISTORIAL DE MOVIMIENTOS -->
+        <div id="view-history" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Historial Reciente de Entradas y Salidas</h2>
+                        <p class="text-sm text-slate-400">Listado cronológico de todas las donaciones registradas y los retiros aprobados.</p>
+                    </div>
+                    <!-- Exportador Simulado / Reset -->
+                    <button onclick="clearHistory()" class="px-4 py-2 border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold flex items-center space-x-2 transition self-start sm:self-auto">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Limpiar Historial</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-4 px-6">Fecha / Hora</th>
+                                <th class="py-4 px-6">Tipo Mov.</th>
+                                <th class="py-4 px-6">Detalle del Artículo</th>
+                                <th class="py-4 px-6">Involucrado (Donante/Beneficiario)</th>
+                                <th class="py-4 px-6 text-right">Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-100 text-sm">
+                            <!-- Inyectado dinámicamente con JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer de la aplicación -->
+    <footer class="bg-slate-100 border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+        <p>© 2026 DonarVida S.I. - Sistema de Inventario para Gestión Benéfica de Donativos.</p>
+        <p class="mt-1">Implementado como Manual Autónomo Local listo para usar.</p>
+    </footer>
+
+    <script>
+        // Base de Datos inicial (Cargada en memoria)
+        let inventory = [
+            { id: '1', type: 'shoes', category: 'Zapatos Deportivos', demographic: 'Hombre', size: '42', quantity: 12 },
+            { id: '2', type: 'shoes', category: 'Zapatos Escolares', demographic: 'Niños', size: '32', quantity: 20 },
+            { id: '3', type: 'clothing', category: 'Camisas', demographic: 'Hombre', size: 'M', quantity: 25 },
+            { id: '4', type: 'clothing', category: 'Camisas', demographic: 'Mujer', size: 'S', quantity: 18 },
+            { id: '5', type: 'clothing', category: 'Pantalones', demographic: 'Hombre', size: 'L', quantity: 15 },
+            { id: '6', type: 'clothing', category: 'Pantalones', demographic: 'Mujer', size: 'M', quantity: 0 }, // Sin Stock
+            { id: '7', type: 'medical', category: 'Kit de Primeros Auxilios', demographic: 'Unisex', size: 'Única', quantity: 50 },
+            { id: '8', type: 'medical', category: 'Mascarillas Quirúrgicas (Caja)', demographic: 'Unisex', size: 'Única', quantity: 80 },
+            { id: '9', type: 'hygiene', category: 'Jabón en Barra', demographic: 'Unisex', size: 'Única', quantity: 120 },
+            { id: '10', type: 'hygiene', category: 'Crema Dental', demographic: 'Unisex', size: 'Única', quantity: 10 }
+        ];
+
+        let historyLogs = [
+            { id: 'l1', timestamp: '29-06-2026 09:30 AM', movement: 'entrada', detail: 'Jabón en Barra (Unisex / Talla: Única)', person: 'Farmacia Solidaria', quantity: 120 },
+            { id: 'l2', timestamp: '29-06-2026 10:15 AM', movement: 'salida', detail: 'Zapatos Deportivos (Hombre / Talla: 42)', person: 'Carlos Mendoza (C.I. V-26.890.345)', quantity: 2 },
+            { id: 'l3', timestamp: '29-06-2026 11:00 AM', movement: 'entrada', detail: 'Kit de Primeros Auxilios (Unisex / Talla: Única)', person: 'ONG Cruz Roja Local', quantity: 50 }
+        ];
+
+        // Definiciones de categorías por tipo de artículo para formularios dinámicos
+        const subcategories = {
+            clothing: ['Camisas', 'Pantalones', 'Suéteres / Abrigos', 'Ropa de Bebé'],
+            shoes: ['Zapatos Deportivos', 'Zapatos Casuales', 'Zapatos Escolares', 'Sandalias'],
+            medical: ['Kit de Primeros Auxilios', 'Mascarillas Quirúrgicas (Caja)', 'Medicamentos Genéricos', 'Gasas y Vendas'],
+            hygiene: ['Jabón en Barra', 'Crema Dental', 'Champú', 'Pañales Desechables']
+        };
+
+        const sizeOptions = {
+            clothing: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Niños (Única)'],
+            shoes: ['28', '30', '32', '34', '36', '38', '40', '42', '44'],
+            medical: ['Única'],
+            hygiene: ['Única']
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderInventory();
+            renderStats();
+            renderHistory();
+        });
+
+        // Controlador de pestañas (Tabs)
+        function switchTab(tabId) {
+            // Ocultar todas las vistas
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-donations').classList.add('hidden');
+            document.getElementById('view-requests').classList.add('hidden');
+            document.getElementById('view-history').classList.add('hidden');
+
+            // Quitar estilos de pestaña activa
+            const tabButtons = document.querySelectorAll('nav button');
+            tabButtons.forEach(btn => {
+                btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-semibold');
+                btn.classList.add('border-transparent', 'text-slate-500', 'font-medium');
+            });
+
+            // Mostrar vista activa
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            // Marcar pestaña activa
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('border-transparent', 'text-slate-500', 'font-medium');
+            activeTab.classList.add('border-indigo-600', 'text-indigo-600', 'font-semibold');
+        }
+
+        // Actualiza las categorías y tallas disponibles según el tipo de artículo que se seleccione
+        function updateSubfields(formPrefix) {
+            const typeSelect = document.getElementById(`${formPrefix}-type`);
+            const categorySelect = document.getElementById(`${formPrefix}-category`);
+            const sizeSelect = document.getElementById(`${formPrefix}-size`);
+            const divDemo = document.getElementById(`div-${formPrefix}-demo`);
+            const divSize = document.getElementById(`div-${formPrefix}-size`);
+
+            const selectedType = typeSelect.value;
+
+            if (!selectedType) return;
+
+            // 1. Llenar categorías específicas
+            categorySelect.innerHTML = '<option value="" disabled selected>Selecciona categoría...</option>';
+            subcategories[selectedType].forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                categorySelect.appendChild(opt);
+            });
+            categorySelect.disabled = false;
+
+            // 2. Mostrar/Ocultar campos según el tipo
+            if (selectedType === 'clothing' || selectedType === 'shoes') {
+                divDemo.classList.remove('hidden');
+                divSize.classList.remove('hidden');
+
+                // Llenar tallas correspondientes
+                sizeSelect.innerHTML = '';
+                sizeOptions[selectedType].forEach(size => {
+                    const opt = document.createElement('option');
+                    opt.value = size;
+                    opt.textContent = size;
+                    sizeSelect.appendChild(opt);
+                });
+            } else {
+                // Para artículos médicos u de higiene usualmente no se requiere talla ni género
+                divDemo.classList.add('hidden');
+                divSize.classList.add('hidden');
+                
+                // Valores automáticos por defecto bajo el capó
+                const demoSelect = document.getElementById(`${formPrefix}-demo`);
+                if (demoSelect) demoSelect.value = 'Unisex';
+                
+                sizeSelect.innerHTML = '<option value="Única" selected>Única</option>';
+            }
+        }
+
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // Colores por tipo
+            let bgClass = 'bg-white border-l-4 border-emerald-500 shadow-lg';
+            let iconClass = 'text-emerald-500 fa-solid fa-circle-check';
+            
+            if (type === 'error') {
+                bgClass = 'bg-white border-l-4 border-rose-500 shadow-lg';
+                iconClass = 'text-rose-500 fa-solid fa-circle-exclamation';
+            } else if (type === 'warning') {
+                bgClass = 'bg-white border-l-4 border-amber-500 shadow-lg';
+                iconClass = 'text-amber-500 fa-solid fa-triangle-exclamation';
+            }
+
+            toast.className = `p-4 rounded-xl flex items-start space-x-3 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `
+                <div class="p-1 rounded-full bg-slate-50 flex items-center justify-center">
+                    <i class="${iconClass} text-lg"></i>
+                </div>
+                <div class="flex-grow">
+                    <h4 class="font-bold text-sm text-slate-800">${title}</h4>
+                    <p class="text-xs text-slate-500 mt-0.5">${message}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Transición de entrada
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            // Autodesvanecer a los 6 segundos
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 6000);
+        }
+
+        function renderStats() {
+            // Calcular total de piezas en stock
+            const totalStock = inventory.reduce((acc, item) => acc + item.quantity, 0);
+            document.getElementById('stat-total-items').textContent = totalStock;
+
+            // Contar registros de entradas en historial
+            const totalDonationsCount = historyLogs.filter(log => log.movement === 'entrada').length;
+            document.getElementById('stat-total-donations').textContent = totalDonationsCount;
+
+            // Contar registros de salidas
+            const totalRequestsCount = historyLogs.filter(log => log.movement === 'salida').length;
+            document.getElementById('stat-total-requests').textContent = totalRequestsCount;
+
+            // Contar registros que tienen stock = 0
+            const outOfStockCount = inventory.filter(item => item.quantity === 0).length;
+            document.getElementById('stat-out-of-stock').textContent = outOfStockCount;
+        }
+
+        function renderInventory() {
+            const searchQuery = document.getElementById('inventory-search').value.toLowerCase();
+            const filterCategory = document.getElementById('inventory-filter-category').value;
+            const tbody = document.getElementById('inventory-table-body');
+            
+            tbody.innerHTML = '';
+
+            // Filtrar datos en memoria
+            const filtered = inventory.filter(item => {
+                const matchesSearch = item.category.toLowerCase().includes(searchQuery) || 
+                                      item.demographic.toLowerCase().includes(searchQuery) ||
+                                      item.size.toLowerCase().includes(searchQuery);
+                const matchesCat = filterCategory === "" || item.type === filterCategory;
+
+                return matchesSearch && matchesCat;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-box-open text-4xl mb-3 block"></i>
+                            No se encontraron artículos en stock con los criterios de búsqueda.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Inyectar filas
+            filtered.forEach(item => {
+                let badgeClass = 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10';
+                let badgeText = 'En Existencia';
+
+                if (item.quantity === 0) {
+                    badgeClass = 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/10';
+                    badgeText = 'Agotado';
+                } else if (item.quantity < 5) {
+                    badgeClass = 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10';
+                    badgeText = 'Stock Crítico';
+                }
+
+                let iconType = 'fa-shirt';
+                if (item.type === 'shoes') iconType = 'fa-shoe-prints';
+                if (item.type === 'medical') iconType = 'fa-suitcase-medical';
+                if (item.type === 'hygiene') iconType = 'fa-soap';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/50 transition">
+                        <td class="py-4 px-6 font-semibold text-slate-800 flex items-center space-x-3">
+                            <span class="p-2 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid ${iconType}"></i>
+                            </span>
+                            <span>${item.category}</span>
+                        </td>
+                        <td class="py-4 px-6 text-slate-500 capitalize">${translateType(item.type)}</td>
+                        <td class="py-4 px-6 text-center">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600">
+                                ${item.demographic}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6 text-center font-medium text-slate-600">${item.size}</td>
+                        <td class="py-4 px-6 text-right font-bold text-slate-800">${item.quantity} unds</td>
+                        <td class="py-4 px-6 text-center">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function translateType(type) {
+            const types = { clothing: 'Ropa', shoes: 'Zapatos', medical: 'Artículos Médicos', hygiene: 'Higiene' };
+            return types[type] || type;
+        }
+
+        function handleDonationSubmit(event) {
+            event.preventDefault();
+
+            const donor = document.getElementById('donor-name').value.trim() || 'Donante Anónimo';
+            const type = document.getElementById('donation-type').value;
+            const category = document.getElementById('donation-category').value;
+            const demo = document.getElementById('donation-demo').value;
+            const size = document.getElementById('donation-size').value;
+            const qty = parseInt(document.getElementById('donation-qty').value, 10);
+
+            if (!type || !category || !qty) {
+                showToast('Campos Incompletos', 'Asegúrate de rellenar todos los campos obligatorios.', 'error');
+                return;
+            }
+
+            // Buscar si ya existe el artículo exacto en la base de datos
+            const existingItem = inventory.find(item => 
+                item.type === type && 
+                item.category === category && 
+                item.demographic === demo && 
+                item.size === size
+            );
+
+            if (existingItem) {
+                // Sumar al stock existente
+                existingItem.quantity += qty;
+            } else {
+                // Crear un nuevo registro de artículo en la base de datos de stock
+                inventory.push({
+                    id: 'it-' + Date.now(),
+                    type: type,
+                    category: category,
+                    demographic: demo,
+                    size: size,
+                    quantity: qty
+                });
+            }
+
+            // Registrar el movimiento en el historial
+            const timestamp = getFormattedDate();
+            historyLogs.unshift({
+                id: 'log-' + Date.now(),
+                timestamp: timestamp,
+                movement: 'entrada',
+                detail: `${category} (${demo} / Talla: ${size})`,
+                person: donor,
+                quantity: qty
+            });
+
+            // Actualizar interfaz
+            renderInventory();
+            renderStats();
+            renderHistory();
+            resetForm('donation-form');
+
+            showToast('Donación Registrada', `Se han sumado con éxito ${qty} unidades de ${category} al stock.`, 'success');
+            
+            // Redireccionar al Dashboard para visualización
+            setTimeout(() => {
+                switchTab('dashboard');
+            }, 1000);
+        }
+
+        function handleRequestSubmit(event) {
+            event.preventDefault();
+
+            const firstName = document.getElementById('req-first-name').value.trim();
+            const lastName = document.getElementById('req-last-name').value.trim();
+            const docId = document.getElementById('req-doc-id').value.trim();
+            
+            const type = document.getElementById('request-type').value;
+            const category = document.getElementById('request-category').value;
+            const demo = document.getElementById('request-demo').value;
+            const size = document.getElementById('request-size').value;
+            const qty = parseInt(document.getElementById('request-qty').value, 10);
+
+            if (!firstName || !lastName || !docId || !type || !category || !qty) {
+                showToast('Campos Incompletos', 'Por favor llena los datos de beneficiario y producto.', 'error');
+                return;
+            }
+
+            // Buscar si el producto existe en el almacén
+            const stockItem = inventory.find(item => 
+                item.type === type && 
+                item.category === category && 
+                item.demographic === demo && 
+                item.size === size
+            );
+
+            // Validación crucial de stock
+            if (!stockItem || stockItem.quantity === 0) {
+                showToast(
+                    'No hay Stock Disponible', 
+                    `Lamentablemente no contamos con existencias de "${category}" (${demo} / Talla: ${size}) en este momento.`, 
+                    'error'
+                );
+                return;
+            }
+
+            if (stockItem.quantity < qty) {
+                showToast(
+                    'Stock Insuficiente', 
+                    `Solo disponemos de ${stockItem.quantity} unidad(es) de este artículo. No se pueden retirar ${qty}.`, 
+                    'warning'
+                );
+                return;
+            }
+
+            // Si hay stock, se realiza el descuento
+            stockItem.quantity -= qty;
+
+            // Registrar la transacción en el historial de forma descriptiva
+            const timestamp = getFormattedDate();
+            historyLogs.unshift({
+                id: 'log-' + Date.now(),
+                timestamp: timestamp,
+                movement: 'salida',
+                detail: `${category} (${demo} / Talla: ${size})`,
+                person: `${firstName} ${lastName} (ID: ${docId})`,
+                quantity: qty
+            });
+
+            // Sincronizar UI
+            renderInventory();
+            renderStats();
+            renderHistory();
+            resetForm('request-form');
+
+            showToast(
+                'Solicitud Procesada con Éxito', 
+                `Se entregó ${qty} und. de ${category} a ${firstName} ${lastName}. El stock se ha actualizado.`, 
+                'success'
+            );
+
+            // Redireccionar al Dashboard
+            setTimeout(() => {
+                switchTab('dashboard');
+            }, 1000);
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = '';
+
+            if (historyLogs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-folder-open text-4xl mb-3 block"></i>
+                            El historial está vacío. Comienza a registrar movimientos.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            historyLogs.forEach(log => {
+                let badgeClass = 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10';
+                let movementIcon = '<i class="fa-solid fa-circle-arrow-down mr-1"></i>';
+                let movementLabel = 'Entrada';
+
+                if (log.movement === 'salida') {
+                    badgeClass = 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/10';
+                    movementIcon = '<i class="fa-solid fa-circle-arrow-up mr-1"></i>';
+                    movementLabel = 'Salida (Retiro)';
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/50 transition">
+                        <td class="py-4 px-6 text-slate-500 font-medium">${log.timestamp}</td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                                ${movementIcon} ${movementLabel}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6 font-semibold text-slate-800">${log.detail}</td>
+                        <td class="py-4 px-6 text-slate-600 font-medium">${log.person}</td>
+                        <td class="py-4 px-6 text-right font-bold ${log.movement === 'entrada' ? 'text-emerald-600' : 'text-indigo-600'}">
+                            ${log.movement === 'entrada' ? '+' : '-'}${log.quantity}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Devuelve fecha y hora formateada en español
+        function getFormattedDate() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            
+            let hours = now.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // Formato de 12 horas
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+
+            return `${day}-${month}-${year} ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+        }
+
+        // Resetea de forma segura los formularios ocultando de nuevo los subcampos dinámicos
+        function resetForm(formId) {
+            document.getElementById(formId).reset();
+            
+            const prefix = formId.split('-')[0]; // 'donation' o 'request'
+            document.getElementById(`${prefix}-category`).disabled = true;
+            document.getElementById(`div-${prefix}-demo`).classList.add('hidden');
+            document.getElementById(`div-${prefix}-size`).classList.add('hidden');
+        }
+
+        // Vacía el historial de movimientos de forma segura
+        function clearHistory() {
+            historyLogs = [];
+            renderHistory();
+            renderStats();
+            showToast('Historial Vaciado', 'Se ha eliminado el historial de transacciones.', 'warning');
+        }
+    </script>
+</body>
+</html>
